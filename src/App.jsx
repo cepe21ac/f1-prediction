@@ -116,10 +116,10 @@ function Hero({ onStart }) {
         </div>
         <h1 className="text-5xl md:text-7xl font-black uppercase leading-none tracking-tight mb-6">
           Predict the<br />
-          <span className="text-red-600">second stint.</span>
+          <span className="text-red-600">second run.</span>
         </h1>
         <p className="text-neutral-400 text-lg md:text-xl max-w-2xl mb-10 leading-relaxed">
-          Punch in the driver, the circuit, the conditions, the tyre, and a first flying-lap time. Get a predicted improvement for the second stint. Built for fans who want to game out the last three minutes of qualifying before it airs.
+          Punch in the driver, the circuit, the conditions, the tyre, and a first flying-lap time. Get a predicted improvement for the second run. Built for fans who want to game out the last three minutes of qualifying before it airs.
         </p>
         <div className="flex flex-wrap gap-3">
           <button onClick={onStart} className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 text-sm uppercase tracking-widest font-bold transition">
@@ -238,7 +238,7 @@ function Predictor({ preset }) {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelClass}>Tyre Compound (2nd stint)</label>
+                <label className={labelClass}>Tyre Compound (2nd run)</label>
                 <select
                   className={selectClass}
                   value={compound}
@@ -249,7 +249,7 @@ function Predictor({ preset }) {
                 </select>
               </div>
               <div>
-                <label className={labelClass}>1st Stint Tyres</label>
+                <label className={labelClass}>1st Run Tyres</label>
                 <select className={selectClass} value={tyreStatus} onChange={e => setTyreStatus(e.target.value)}>
                   {TYRE_STATUSES.map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
                 </select>
@@ -257,7 +257,7 @@ function Predictor({ preset }) {
             </div>
 
             <div>
-              <label className={labelClass}>First Stint Time</label>
+              <label className={labelClass}>First Lap Time</label>
               <input
                 type="text"
                 value={firstStint}
@@ -284,7 +284,7 @@ function Predictor({ preset }) {
               </div>
 
               <div className="text-center py-6 border-y border-neutral-800">
-                <div className="text-xs uppercase tracking-widest text-neutral-500 mb-2">Simulated 2nd Stint</div>
+                <div className="text-xs uppercase tracking-widest text-neutral-500 mb-2">Simulated 2nd Run</div>
                 <div
                   className={`text-5xl md:text-6xl font-bold tabular-nums transition-all duration-300 ease-out ${rolling ? 'scale-110 text-purple-300' : 'scale-100 text-white'}`}
                   style={MONO}
@@ -330,7 +330,7 @@ function Predictor({ preset }) {
 
               <div className="grid grid-cols-2 gap-4 mt-6 text-sm">
                 <div>
-                  <div className="text-xs uppercase tracking-widest text-neutral-500">1st Stint</div>
+                  <div className="text-xs uppercase tracking-widest text-neutral-500">1st Run</div>
                   <div className="text-lg" style={MONO}>{valid ? formatTime(firstStintSec) : "--:--.---"}</div>
                 </div>
                 <div>
@@ -346,11 +346,11 @@ function Predictor({ preset }) {
             {/* Delta bar visualization */}
             {valid && (
               <div className="bg-neutral-950 border border-neutral-800 p-4">
-                <div className="text-xs uppercase tracking-widest text-neutral-500 mb-3">Stint Comparison</div>
+                <div className="text-xs uppercase tracking-widest text-neutral-500 mb-3">Run Comparison</div>
                 <div className="space-y-2">
                   <div>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-neutral-400">1st Stint</span>
+                      <span className="text-neutral-400">1st Run</span>
                       <span style={MONO}>{formatTime(firstStintSec)}</span>
                     </div>
                     <div className="w-full bg-neutral-900 h-2">
@@ -359,7 +359,7 @@ function Predictor({ preset }) {
                   </div>
                   <div>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className={isFaster ? "text-purple-400" : "text-yellow-400"}>2nd Stint (sim)</span>
+                      <span className={isFaster ? "text-purple-400" : "text-yellow-400"}>2nd Run (sim)</span>
                       <span style={MONO}>{formatTime(sampled)}</span>
                     </div>
                     <div className="w-full bg-neutral-900 h-2">
@@ -449,7 +449,7 @@ function Methodology() {
           <Card
             step="Step 02"
             title="Tyre penalty"
-            body="If the FIRST stint was on used tyres, the second stint improvement gets a +0.15s boost — you had less grip before, so the swap to fresh rubber shows up bigger."
+            body="If the FIRST run was on used tyres, the second run improvement gets a +0.15s boost — you had less grip before, so the swap to fresh rubber shows up bigger."
           />
           <Card
             step="Step 03"
@@ -466,7 +466,7 @@ function Methodology() {
         <div className="mt-10 bg-neutral-950 border border-neutral-800 p-6">
           <div className="text-xs uppercase tracking-widest text-neutral-500 font-bold mb-3">The formula</div>
           <div className="text-lg" style={MONO}>
-            <span className="text-purple-400">sampled</span> = <span className="text-white">first_stint</span> − (<span className="text-red-400">base_gap</span> + <span className="text-yellow-400">tyre_penalty</span>) + <span className="text-neutral-400">normal(0, sd)</span>
+            <span className="text-purple-400">sampled</span> = <span className="text-white">first_lap</span> − (<span className="text-red-400">base_gap</span> + <span className="text-yellow-400">tyre_penalty</span>) + <span className="text-neutral-400">normal(0, sd)</span>
           </div>
           <p className="text-neutral-500 text-sm mt-4 leading-relaxed">
             Model built by Cesare Pesci as an R script. Ported to JavaScript for this website — same underlying logic, with the noise term surfaced so each simulated lap looks like a plausible outcome rather than a fixed calculator answer. A proper v2 would train on real FastF1 telemetry with driver- and circuit-specific coefficients.
@@ -494,10 +494,10 @@ function About() {
         <SectionHeader eyebrow="04 / Builder" title="About" subtitle={null} />
         <div className="mt-10 max-w-3xl">
           <p className="text-neutral-300 text-lg leading-relaxed mb-6">
-            Apex Predict is a hobby project by <span className="text-white font-bold">Cesare Pesci</span> — a fan-side tool for gaming out F1 qualifying second stints before they happen.
+            Apex Predict is a hobby project by <span className="text-white font-bold">Cesare Pesci</span> — a fan-side tool for gaming out F1 qualifying second runs before they happen.
           </p>
           <p className="text-neutral-400 leading-relaxed mb-4">
-            The underlying model is a rule-based lap-time predictor written in R. It doesn't (yet) train on real F1 data — it encodes the intuition of what a second stint typically looks like across compounds, sessions, and conditions. Think of it less as a forecast and more as a sandbox: change one variable, see how the model thinks it should shift.
+            The underlying model is a rule-based lap-time predictor written in R. It doesn't (yet) train on real F1 data — it encodes the intuition of what a second run typically looks like across compounds, sessions, and conditions. Think of it less as a forecast and more as a sandbox: change one variable, see how the model thinks it should shift.
           </p>
           <p className="text-neutral-400 leading-relaxed mb-8">
             A future version will pull real historical laps from FastF1 and train a proper machine learning model with driver-specific effects. If that ships, it lives here.
