@@ -40,6 +40,19 @@ function computeEffect(condition, session, compound, tyreStatus, circuit) {
   return e;
 }
 
+function computeSd(condition, session) {
+  if (condition === "Wet") return 0.30;
+  if (session === "Q1" && condition === "Dry") return 0.15;
+  return 0.10;
+}
+
+// Box-Muller transform for sampling a normal random number
+function normalRandom() {
+  const u1 = Math.random() || 0.0001;
+  const u2 = Math.random();
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+}
+
 function parseTime(str) {
   const s = String(str).trim();
   if (!s) return NaN;
@@ -143,6 +156,10 @@ function Predictor({ preset }) {
   const [compound, setCompound] = useState("Soft");
   const [tyreStatus, setTyreStatus] = useState("New");
   const [firstStint, setFirstStint] = useState("1:12.500");
+  const [noise, setNoise] = useState(() => normalRandom());
+  const [rolling, setRolling] = useState(false);
+  const [rollCounter, setRollCounter] = useState(0);
+  const [history, setHistory] = useState([]);
 
   useEffect(() => {
     if (preset) {
@@ -156,10 +173,29 @@ function Predictor({ preset }) {
     }
   }, [preset]);
 
+  // Resample lap-time noise when any input or the roll counter changes
+  useEffect(() => {
+    setNoise(normalRandom());
+    setRolling(true);
+    const t = setTimeout(() => setRolling(false), 400);
+    return () => clearTimeout(t);
+  }, [driver, session, circuit, condition, compound, tyreStatus, firstStint, rollCounter]);
+
   const firstStintSec = parseTime(firstStint);
   const effect = computeEffect(condition, session, compound, tyreStatus, circuit);
-  const predicted = firstStintSec - effect;
+  const sd = computeSd(condition, session);
+  const expected = firstStintSec - effect;
+  const sampled = expected + noise * sd;
   const valid = !isNaN(firstStintSec) && firstStintSec > 0;
+  const currentDelta = firstStintSec - sampled;
+  const isFaster = currentDelta > 0;
+
+  const reroll = () => {
+    if (valid) {
+      setHistory(h => [sampled, ...h].slice(0, 5));
+    }
+    setRollCounter(c => c + 1);
+  };
 
   const selectClass = "w-full bg-neutral-900 border border-neutral-700 text-white px-3 py-2 text-sm uppercase tracking-wider focus:border-red-600 focus:outline-none cursor-pointer";
   const labelClass = "block text-neutral-400 text-xs uppercase tracking-widest mb-1.5 font-semibold";
@@ -202,7 +238,7 @@ function Predictor({ preset }) {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelClass}>Tyre Compound</label>
+                <label className={labelClass}>Tyre Compound (2nd stint)</label>
                 <select
                   className={selectClass}
                   value={compound}
@@ -213,7 +249,7 @@ function Predictor({ preset }) {
                 </select>
               </div>
               <div>
-                <label className={labelClass}>Tyre Status</label>
+                <label className={labelClass}>1st Stint Tyres</label>
                 <select className={selectClass} value={tyreStatus} onChange={e => setTyreStatus(e.target.value)}>
                   {TYRE_STATUSES.map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
                 </select>
@@ -248,15 +284,47 @@ function Predictor({ preset }) {
               </div>
 
               <div className="text-center py-6 border-y border-neutral-800">
-                <div className="text-xs uppercase tracking-widest text-neutral-500 mb-2">Predicted 2nd Stint</div>
-                <div className="text-5xl md:text-6xl font-bold text-white tabular-nums" style={MONO}>
-                  {valid ? formatTime(predicted) : "--:--.---"}
+                <div className="text-xs uppercase tracking-widest text-neutral-500 mb-2">Simulated 2nd Stint</div>
+                <div
+                  className={`text-5xl md:text-6xl font-bold tabular-nums transition-all duration-300 ease-out ${rolling ? 'scale-110 text-purple-300' : 'scale-100 text-white'}`}
+                  style={MONO}
+                >
+                  {valid ? formatTime(sampled) : "--:--.---"}
                 </div>
                 {valid && (
-                  <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-purple-950 border border-purple-700 text-purple-300 text-sm font-bold" style={MONO}>
-                    <span>▼</span>
-                    <span>−{effect.toFixed(3)}s</span>
-                  </div>
+                  <>
+                    <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
+                      <div
+                        className={`inline-flex items-center gap-2 px-3 py-1 border text-sm font-bold ${isFaster ? 'bg-purple-950 border-purple-700 text-purple-300' : 'bg-yellow-950 border-yellow-700 text-yellow-300'}`}
+                        style={MONO}
+                      >
+                        <span>{isFaster ? '▼' : '▲'}</span>
+                        <span>{isFaster ? '−' : '+'}{Math.abs(currentDelta).toFixed(3)}s</span>
+                      </div>
+                    </div>
+                    <div className="mt-3 text-xs text-neutral-500" style={MONO}>
+                      Expected · {formatTime(expected)} · ± {sd.toFixed(3)}s
+                    </div>
+                    <button
+                      onClick={reroll}
+                      className="mt-6 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-8 py-3 text-sm uppercase tracking-widest font-bold transition cursor-pointer inline-flex items-center gap-2"
+                    >
+                      <span className={rolling ? 'inline-block animate-spin' : 'inline-block'}>↻</span>
+                      <span>Run Another Lap</span>
+                    </button>
+                    {history.length > 0 && (
+                      <div className="mt-6 pt-4 border-t border-neutral-900">
+                        <div className="text-xs uppercase tracking-widest text-neutral-600 mb-2">Previous simulations</div>
+                        <div className="flex justify-center gap-1.5 flex-wrap" style={MONO}>
+                          {history.map((h, i) => (
+                            <span key={i} className="text-xs text-neutral-500 bg-neutral-950 border border-neutral-800 px-2 py-1">
+                              {formatTime(h)}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -291,11 +359,11 @@ function Predictor({ preset }) {
                   </div>
                   <div>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-purple-400">2nd Stint (predicted)</span>
-                      <span style={MONO}>{formatTime(predicted)}</span>
+                      <span className={isFaster ? "text-purple-400" : "text-yellow-400"}>2nd Stint (sim)</span>
+                      <span style={MONO}>{formatTime(sampled)}</span>
                     </div>
                     <div className="w-full bg-neutral-900 h-2">
-                      <div className="h-2 bg-purple-500" style={{ width: `${Math.max(50, (predicted / firstStintSec) * 100)}%` }} />
+                      <div className={`h-2 ${isFaster ? 'bg-purple-500' : 'bg-yellow-500'}`} style={{ width: `${Math.max(50, (sampled / firstStintSec) * 100)}%` }} />
                     </div>
                   </div>
                 </div>
@@ -372,7 +440,7 @@ function Methodology() {
       <div className="max-w-6xl mx-auto px-6">
         <SectionHeader eyebrow="03 / Under the hood" title="How it works" subtitle="Full transparency on the model — no black box." />
 
-        <div className="grid md:grid-cols-3 gap-6 mt-10">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mt-10">
           <Card
             step="Step 01"
             title="Base gap"
@@ -381,22 +449,27 @@ function Methodology() {
           <Card
             step="Step 02"
             title="Tyre penalty"
-            body="Starting the second stint from used tyres adds +0.15s to the improvement (you had more grip in the bag). New tyres, no adjustment."
+            body="If the FIRST stint was on used tyres, the second stint improvement gets a +0.15s boost — you had less grip before, so the swap to fresh rubber shows up bigger."
           />
           <Card
             step="Step 03"
+            title="Live simulation"
+            body="Each lap you run is one sampled outcome — the base gap plus normal-distributed noise (sd 0.10s dry, 0.15s Q1, 0.30s wet). Hit Run Another Lap for a fresh sim."
+          />
+          <Card
+            step="Step 04"
             title="Circuit — not modelled"
-            body="No circuit-specific coefficients yet. Every track is treated as average. Real circuit effects (Monaco vs Monza vs Spa) will land when the model is rebuilt on FastF1 telemetry."
+            body="No circuit-specific coefficients yet. Every track is treated as average. Real circuit effects (Monaco vs Monza vs Spa) land when the model is rebuilt on FastF1 telemetry."
           />
         </div>
 
         <div className="mt-10 bg-neutral-950 border border-neutral-800 p-6">
           <div className="text-xs uppercase tracking-widest text-neutral-500 font-bold mb-3">The formula</div>
           <div className="text-lg" style={MONO}>
-            <span className="text-purple-400">predicted</span> = <span className="text-white">first_stint</span> − (<span className="text-red-400">base_gap</span> + <span className="text-yellow-400">tyre_penalty</span>)
+            <span className="text-purple-400">sampled</span> = <span className="text-white">first_stint</span> − (<span className="text-red-400">base_gap</span> + <span className="text-yellow-400">tyre_penalty</span>) + <span className="text-neutral-400">normal(0, sd)</span>
           </div>
           <p className="text-neutral-500 text-sm mt-4 leading-relaxed">
-            Model built by Cesare Pesci as an R script. Ported to JavaScript for this website — predictions are identical to the source model. This is a v1 for fun; a proper version would train a gradient-boosted model on real FastF1 telemetry with driver-specific coefficients.
+            Model built by Cesare Pesci as an R script. Ported to JavaScript for this website — same underlying logic, with the noise term surfaced so each simulated lap looks like a plausible outcome rather than a fixed calculator answer. A proper v2 would train on real FastF1 telemetry with driver- and circuit-specific coefficients.
           </p>
         </div>
       </div>
